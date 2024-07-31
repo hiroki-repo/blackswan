@@ -1,0 +1,1012 @@
+#include "ia32.as"
+cls 4
+/*
+
+HSP??R?[???o?b?N???W???[??
+HSP3.5 beta 3?????m?F
+?p?u???b?N?h???C?????
+CC0 1.0????C?Z???X?????(CC0??R?????Y?????? http://creativecommons.org/publicdomain/zero/1.0/deed.ja)
+
+
+?R?[???o?b?N??????
+makeclbkfunc p1,p2,3,p4
+p1=?????              ?R?[???o?b?N??????K?v??????n???????|?C???^(?T?u???[?`???????R?[???o?b?N??????|?C???^)????????
+p2=0~(0)               ?n????????????? (p2<=0???????????????)
+p3=???x????            ?R?[???o?b?N????????????T?u???[?`??????x??
+p4=0|1(0)              ??яo???K????? 0=stdcall 1=cdecl   p4??????????stdcall??????
+
+??????????????? (p2<=0) ??A??яo?????? lparam=NULL?A wparam=0 ??????
+????????????     (p2>0)  ??A??яo?????? lparam=???????o?b?t?@?A?h???X?A wparam=?????????? ??????
+?????????????m??G???[??? ??A??яo?????? lparam=NULL?A wparam=0 ??????
+
+?T?u???[?`???????????????? stat ????l???R?[???o?b?N????????l??????
+
+?????o?b?t?@??T?u???[?`?????????????????? (lparam?Awparam??l??ρE???????)
+argclbkfunc ??????????擾??????A?????????????K?v??????Awparam?Alparam??l??j????????????
+
+
+lparam??wparam????????????擾
+argclbkfunc p1
+p1=?z??              ?????????擾???????^?z??
+
+?????????????^?z?????? p1 ?????????? (?????o?b?t?@????R?s?[??????)
+?R?[???o?b?N????????????T?u???[?`??????g?p???????????
+wparam ?? lparam ???擾?O??j???????????????яo?????????g?p???????????
+lparam ?? wparam ??`?F?b?N??s???????
+
+*/
+
+
+
+
+//???W???[??
+//-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|-----|//
+#ifndef _modulemakeclbkfuncah_def_
+#define _modulemakeclbkfuncah_def_
+#module
+
+	#uselib "kernel32.dll"
+	#func VirtualProtect "VirtualProtect" sptr,int,int,var
+
+	#const  FUNCSIZE     22         //?}?V????????
+	#const  FUNCSIZEBYT  FUNCSIZE*4 //?}?V????????(?o?C?g)
+
+	#const  PAGE_EXECUTE_READWRITE  $00000040
+
+	#deffunc makeclbkfunc var p_bin, int numargs, label label_sub, int clmode,\
+	local hspctx,\
+	local int_numargs,\
+	local lbl_tmp,\
+	local int_tmp,\
+	local bin,\
+	local int_stat
+
+		lbl_tmp = label_sub  //?T?u???[?`?????x??
+		mref hspctx,68
+		int_numargs = numargs & $80003FFF
+		int_stat=stat        //stat????
+
+		//?e?[?u??????????m??
+		static_arr_str_bin(static_int_idx) = "" // ????? / ?v?f???
+		memexpand static_arr_str_bin(static_int_idx), FUNCSIZEBYT
+		p_bin = varptr(static_arr_str_bin(static_int_idx))
+
+		//?}?V????
+		dupptr bin, p_bin, FUNCSIZEBYT
+		bin(0)  = $BE56C031       , varptr(hspctx(9)), $B9044689, int_numargs , $8D530689
+		bin(5)  = $0000989E       , $7EC98500        , $E1C1511C, $13FF5102   , $04468959
+		bin(10) = $74C08559       , $FF0E890C        , $8F088C74, $E2FC8844   , $68C689F6
+		bin(15) = lpeek(lbl_tmp,0), $581C53FF        , $0574F685, $0453ff56   , $54838B58
+		bin(20) = $5B000002       , $0000C35E
+		if clmode==0 & int_numargs>0{
+			bin(FUNCSIZE-1) = $C25E | int_numargs << 18  //stdcall????????????????X?^?b?N????
+		}
+
+		static_int_idx++
+		VirtualProtect p_bin, FUNCSIZEBYT, PAGE_EXECUTE_READWRITE, int_tmp
+		return int_stat
+
+
+	#deffunc argclbkfunc array arr_int_args,\
+	local cln_arr_int_tmp
+
+		dupptr cln_arr_int_tmp, lparam, wparam*4
+		dim arr_int_args, wparam
+		memcpy arr_int_args, cln_arr_int_tmp, wparam*4
+		return
+
+#global
+
+#endif
+
+#module __intdev4wscemu_
+#deffunc intwithvec int prm_0
+if ((interruptenabled@>>prm_0)&1)!0 && ((interruptstatus@>>prm_0)&1)=0{
+CPU_REQ_INTERRUPT_IN@ intvecoffset@+prm_0
+interruptstatus@|=(1<<prm_0)
+}
+return
+#deffunc changekeystate int prm_0,int prm_1
+if (prm_1!0){
+keypadstat@((prm_0>>2)&7)|=(prm_1!0)<<(prm_0&3)
+}else{
+keypadstat@((prm_0>>2)&7)&=(-1)^((prm_1!0)<<(prm_0&3))
+}
+if (prm_1!0){intwithvec 1}
+return
+#deffunc local initeeprom
+
+dim tblmask_eep,5,16
+tblmask_eep(0,0)=0
+tblmask_eep(1,0)=0
+tblmask_eep(2,0)=0
+tblmask_eep(3,0)=0
+tblmask_eep(4,0)=0
+
+tblmask_eep(0,1)=0
+tblmask_eep(1,1)=0
+tblmask_eep(2,1)=0
+tblmask_eep(3,1)=0
+tblmask_eep(4,1)=0
+
+tblmask_eep(0,2)=0
+tblmask_eep(1,2)=0
+tblmask_eep(2,2)=0
+tblmask_eep(3,2)=0
+tblmask_eep(4,2)=0
+
+tblmask_eep(0,3)=0
+tblmask_eep(1,3)=0
+tblmask_eep(2,3)=0
+tblmask_eep(3,3)=0
+tblmask_eep(4,3)=0
+
+tblmask_eep(0,4)=0xc
+tblmask_eep(1,4)=2
+tblmask_eep(2,4)=0x3
+tblmask_eep(3,4)=0
+tblmask_eep(4,4)=0x3
+
+tblmask_eep(0,5)=0x18
+tblmask_eep(1,5)=3
+tblmask_eep(2,5)=0x6
+tblmask_eep(3,5)=1
+tblmask_eep(4,5)=0x7
+
+tblmask_eep(0,6)=0x30
+tblmask_eep(1,6)=4
+tblmask_eep(2,6)=0xc
+tblmask_eep(3,6)=2
+tblmask_eep(4,6)=0xf
+
+tblmask_eep(0,7)=0x60
+tblmask_eep(1,7)=5
+tblmask_eep(2,7)=0x18
+tblmask_eep(3,7)=3
+tblmask_eep(4,7)=0x1f
+
+tblmask_eep(0,8)=0xc0
+tblmask_eep(1,8)=6
+tblmask_eep(2,8)=0x30
+tblmask_eep(3,8)=4
+tblmask_eep(4,8)=0x3f
+
+tblmask_eep(0,9)=0x180
+tblmask_eep(1,9)=7
+tblmask_eep(2,9)=0x60
+tblmask_eep(3,9)=5
+tblmask_eep(4,9)=0x7f
+
+tblmask_eep(0,10)=0x300
+tblmask_eep(1,10)=8
+tblmask_eep(2,10)=0xc0
+tblmask_eep(3,10)=6
+tblmask_eep(4,10)=0xff
+
+tblmask_eep(0,11)=0x600
+tblmask_eep(1,11)=9
+tblmask_eep(2,11)=0x180
+tblmask_eep(3,11)=7
+tblmask_eep(4,11)=0x1ff
+
+tblmask_eep(0,12)=0xc00
+tblmask_eep(1,12)=10
+tblmask_eep(2,12)=0x300
+tblmask_eep(3,12)=8
+tblmask_eep(4,12)=0x3ff
+
+tblmask_eep(0,13)=0x1800
+tblmask_eep(1,13)=11
+tblmask_eep(2,13)=0x600
+tblmask_eep(3,13)=9
+tblmask_eep(4,13)=0x7ff
+
+tblmask_eep(0,14)=0x3000
+tblmask_eep(1,14)=12
+tblmask_eep(2,14)=0xc00
+tblmask_eep(3,14)=10
+tblmask_eep(4,14)=0xfff
+
+tblmask_eep(0,15)=0x6000
+tblmask_eep(1,15)=13
+tblmask_eep(2,15)=0x1800
+tblmask_eep(3,15)=11
+tblmask_eep(4,15)=0x1fff
+
+return
+#defcfunc accesseeprom var prm_0,int prm_1
+eeprom_i=0:eeprom_j=0
+#ifdef qpeek
+if qpeek(prm_0,0)=0{return prm_1}
+sizeofeeprom=qpeek(prm_0,8)
+dupptr eepromcontent,qpeek(prm_0,0),sizeofeeprom,2
+#else
+if lpeek(prm_0,0)=0{return prm_1}
+sizeofeeprom=lpeek(prm_0,8)
+dupptr eepromcontent,lpeek(prm_0,0),sizeofeeprom,2
+#endif
+eeprom_i=15:eeprom_j=0x8000
+repeat
+eeprom_i--:eeprom_j>>=1
+if eeprom_i<0{break}
+if (((prm_1>>16)&0xFFFF)&eeprom_j)!0{
+	break
+}
+loop
+eeprom_op=(((prm_1>>16)&0xFFFF)&tblmask_eep(0,eeprom_i))>>tblmask_eep(1,eeprom_i)
+switch op
+case 0
+eeprom_addr=(((prm_1>>16)&0xFFFF)&tblmask_eep(2,eeprom_i))>>tblmask_eep(3,eeprom_i)
+	switch eeprom_addr
+	case 0
+	poke prm_0,16,0
+	swbreak
+	case 1
+	eeprom_j=tblmask_eep(4,eeprom_i)
+	repeat
+	eeprom_j--
+	if eeprom_j<0{break}
+	wpoke eepromcontent,eeprom_j*2,((prm_1>>0)&0xFFFF)
+	loop
+	swbreak
+	case 2
+	if peek(prm_0,16){
+		memset eepromcontent,255,sizeofeeprom,0
+	}
+	swbreak
+	case 3
+	poke prm_0,16,1
+	swbreak
+	swend
+swbreak
+case 1
+	if peek(prm_0,16){
+		eeprom_addr=(((prm_1>>16)&0xFFFF)&tblmask_eep(4,eeprom_i))
+		wpoke eepromcontent,eeprom_addr*2,((prm_1>>0)&0xFFFF)
+	}
+swbreak
+case 2
+	eeprom_addr=(((prm_1>>16)&0xFFFF)&tblmask_eep(4,eeprom_i))
+	return wpeek(eepromcontent,eeprom_addr*2)|(prm_1&0xFFFF0000)
+swbreak
+case 3
+	if peek(prm_0,16){
+		eeprom_addr=(((prm_1>>16)&0xFFFF)&tblmask_eep(4,eeprom_i))
+		wpoke eepromcontent,eeprom_addr*2,0xFFFF
+	}
+	return 0|(prm_1&0xFFFF0000)
+swbreak
+swend
+return prm_1
+#defcfunc getspritepix int prm_0,int prm_1,int prm_2
+return 0
+#global
+initeeprom@__intdev4wscemu_
+
+makeclbkfunc clbk, 3, *RMKEARCH,1
+dupptr ia32regs,CPU_GET_REGPTR(5),0x4f0,2
+CPU_SET_MACTLFC clbk
+CPU_INIT
+CPU_RESET
+
+sdim scepstrcture,32
+sdim siepstrcture,32
+sdim sieprom,64
+sdim sceprom,65536
+memset sieprom,255,64,0
+memset sceprom,65536,64,0
+
+#ifdef qpoke
+qpoke siepstrcture,0,varptr(sieprom)
+qpoke siepstrcture,8,64
+qpoke scepstrcture,0,varptr(sceprom)
+qpoke scepstrcture,8,65536
+#else
+lpoke siepstrcture,0,varptr(sieprom)
+lpoke siepstrcture,8,64
+lpoke scepstrcture,0,varptr(sceprom)
+lpoke scepstrcture,8,65536
+#endif
+
+poke siepstrcture,16,1
+
+sdim memory,65536*8
+buffer 1,224,144,1
+gsel 1,0
+mref vram8,66
+dim lcdmonopal,16
+gsel 0,0
+
+sdim firmware,0x2000
+bload "firmware.wsc",firmware
+sdim gamerom,0x1000000
+dircmdlines=dir_cmdline:repeat:if strmid(dircmdlines,0,1)=" "{dircmdlines=strmid(dircmdlines,1,strlen(dircmdlines))}else{break}:loop
+exist dircmdlines:gamesize=strsize
+if gamesize!-1{
+bload dircmdlines,gamerom
+}
+//memcpy gamerom,gamerom,0x10000,0x1000000-0x10000,gamesize-0x10000
+
+sdim iomem,256
+
+scr2winconf=0
+sprwinconf=0
+scr1scroll=0
+gdmaresult=0
+lcdmonoshade=0
+
+sysctlreg1|=2
+
+dim keypadstat,16
+pageladdr=0xf
+
+//poweronbtnpush=1
+//changekeystate 0,1
+
+cpuclock=3072000
+
+repeat
+gsel 1,0
+if sysctlreg2&128{
+repeat 256:pal_r=(peek(memory,0xFE01+(cnt*2))&0xF)*16:pal_g=((peek(memory,0xFE00+(cnt*2))&0xF0)>>4)*16:pal_b=(peek(memory,0xFE00+(cnt*2))&0xF)*16:if pal_r>255{pal_r=255}:if pal_g>255{pal_g=255}:if pal_b>255{pal_b=255}:palette cnt,pal_r,pal_g,pal_b,cnt=255:loop
+palcolor ((bgcolor&0xF)<<4)|((bgcolor>>4)&0xF)
+}else{
+repeat 16:monoclrx=((15-cnt)*16):if monoclrx>255{monoclrx=255}:palette cnt,monoclrx,monoclrx,monoclrx,cnt=15:loop
+palcolor (bgcolor&0x7)*2
+}
+pos 0,0
+boxf
+if (sysctlreg3&1) or ((lcdiconctrl&1) or ((lcdctrl&1)=0)){
+CPU_EXECUTE_CC cpuclock/60
+}else{
+//if lcdfinalline=0 or lcdfinalporchline=0{
+repeat 144
+displinercnt=cnt
+if (interruptinline-1)=cnt{intwithvec 4}
+CPU_EXECUTE_CC cpuclock/60/144
+spritetblcnttl=spritetblcnt:if spritetblcnttl>0x80{spritetblcnttl=0x80}
+repeat 2
+spritescrid_now=cnt
+addr4vraminmem=(((screenaddr >> (4*cnt))&0xF)<<11)
+repeat spritetblcnttl
+spritecode=lpeek(memory,(spriteaddr<<9)+(((cnt+spritetblfst)&0xFF)*4))
+if (displinercnt<=peek(sprwinconf,1)+peek(spritecode,2)+peek(scr1scroll,(spritescrid_now*2)+1)) and (displinercnt>=peek(sprwinconf,3)+peek(spritecode,2)+peek(scr1scroll,(spritescrid_now*2)+1)) and (((spritecode&(1<<12))!=0)==spritescrid_now) {
+	repeat peek(sprwinconf,2):if (cnt+peek(sprwinconf,0)+peek(spritecode,3)+peek(scr1scroll,(spritescrid_now*2)+0))<224{poke vram8,((143-displinercnt)*224)+cnt+peek(sprwinconf,0)+peek(spritecode,3)+peek(scr1scroll,(spritescrid_now*2)+0),getspritepix(spritecode,cnt,displinercnt-peek(sprwinconf,1)-peek(spritecode,2)-peek(scr1scroll,(spritescrid_now*2)+1))}:loop
+}
+loop
+loop
+if (timerctl&0x01)!0 & (htimer!0){
+	htimer--
+	if (htimer=0){
+		if (timerctl&2)!0{
+			htimer=hprebase&0xFFFF
+		}
+		intwithvec 7
+	}
+}
+loop
+/*}else{
+if lcdfinalporchline=0{
+repeat lcdfinalline
+displinercnt=cnt
+if (interruptinline-1)=cnt{intwithvec 4}
+CPU_EXECUTE_CC 30720000/60/lcdfinalline
+if (timerctl&0x01)!0 & (htimer!0){
+	htimer--
+	if (htimer=0){
+		if (timerctl&2)!0{
+			htimer=hprebase&0xFFFF
+		}
+		intwithvec 7
+	}
+}
+loop
+}else{
+repeat lcdfinalporchline
+displinercnt=cnt
+if (interruptinline-1)=cnt{intwithvec 4}
+CPU_EXECUTE_CC 30720000/60/lcdfinalporchline
+if (timerctl&0x01)!0 & (htimer!0){
+	htimer--
+	if (htimer=0){
+		if (timerctl&2)!0{
+			htimer=hprebase&0xFFFF
+		}
+		intwithvec 7
+	}
+}
+loop
+}
+}*/
+intwithvec 6
+if (timerctl&0x04)!0 & (vtimer!0){
+	vtimer--
+	if (vtimer=0){
+		if (timerctl&8)!0{
+			vtimer=vprebase&0xFFFF
+		}
+		intwithvec 5
+	}
+}
+
+}
+/*if poweronbtnpush=1{
+changekeystate 0,0
+poweronbtnpush=0
+}*/
+
+gsel 0,0
+pos 0,0
+if (sysctlreg3&1) or ((lcdiconctrl&1) or ((lcdctrl&1)=0)){
+color 0,0,0
+boxf
+}else{
+gzoom ginfo(12),ginfo(13),1,0,0,224,144,0
+}
+await 16
+loop
+stop
+*RMKEARCH
+//await
+argclbkfunc argv
+addr4access=argv(0)&0xFFFFF
+switch argv(2)&3
+case 0
+if addr4access<0x10000{
+poke memory,addr4access,argv(1)
+return 0
+}
+if addr4access<0x20000{
+if page1addr>=8{
+		return 0
+	}else{
+		poke memory,addr4access+(page1addr*0x10000),argv(1)
+		return 0
+	}
+}
+return 0xFF
+swbreak
+case 1
+if addr4access<0x10000{
+return peek(memory,addr4access)
+}
+if addr4access<0x20000{
+if page1addr>=8{
+		return 0xff
+	}else{
+		return peek(memory,addr4access+(page1addr*0x10000))
+	}
+}
+if addr4access<0x30000{
+return peek(gamerom,((addr4access-0x20000)+(page2addr*0x10000))\gamesize)
+}
+if addr4access<0x40000{
+return peek(gamerom,((addr4access-0x30000)+(page3addr*0x10000))\gamesize)
+}
+if addr4access>=0xFE000 && (sysctlreg1&1)=0{
+return peek(firmware,addr4access&0x1FFF)
+}
+return peek(gamerom,((addr4access)+(pageladdr*0x100000))\gamesize)
+return 0xFF
+swbreak
+case 2
+	switch argv(0)
+	case 0x00
+	displayctrl=argv(1)
+	return 0
+	swbreak
+	case 0x01
+	bgcolor=argv(1)
+	return 0
+	swbreak
+	
+	case 0x03
+	interruptinline=argv(1)
+	return 0
+	swbreak
+	case 0x04
+	if sysctlreg2&128{
+		spriteaddr=argv(1)&63
+	}else{
+		spriteaddr=argv(1)&31
+	}
+	return 0
+	swbreak
+	case 0x05
+	spritetblfst=argv(1)
+	return 0
+	swbreak
+	case 0x06
+	spritetblcnt=argv(1)
+	return 0
+	swbreak
+	case 0x07
+	if sysctlreg2&128{
+		screenaddr=argv(1)
+	}else{
+		screenaddr=argv(1)&0x77
+	}
+	return 0
+	swbreak
+	case 0x08
+	case 0x09
+	case 0x0a
+	case 0x0b
+	poke scr2winconf,argv(0)&3,argv(1)
+	return 0
+	swbreak
+	case 0x0c
+	case 0x0d
+	case 0x0e
+	case 0x0f
+	poke sprwinconf,argv(0)&3,argv(1)
+	return 0
+	swbreak
+	case 0x10
+	case 0x11
+	case 0x12
+	case 0x13
+	poke scr1scroll,argv(0)&3,argv(1)
+	return 0
+	swbreak
+	case 0x14
+	lcdctrl=argv(1)
+	return 0
+	swbreak
+	case 0x15
+	lcdiconctrl=argv(1)
+	return 0
+	swbreak
+	case 0x16
+	lcdfinalline=argv(1)
+	return 0
+	swbreak
+	case 0x17
+	lcdfinalporchline=argv(1)
+	return 0
+	swbreak
+
+	case 0x1a
+	lcdstatus=argv(1)
+	lcdiconctrl|=(argv(1)&1)
+	return 0
+	swbreak
+
+	case 0x1c
+	case 0x1d
+	case 0x1e
+	case 0x1f
+	poke lcdmonoshade,argv(0)&3,argv(1)
+	return 0
+	swbreak
+	case 0x20
+	case 0x21
+	case 0x22
+	case 0x23
+	case 0x24
+	case 0x25
+	case 0x26
+	case 0x27
+	case 0x28
+	case 0x29
+	case 0x2a
+	case 0x2b
+	case 0x2c
+	case 0x2d
+	case 0x2e
+	case 0x2f
+	case 0x30
+	case 0x31
+	case 0x32
+	case 0x33
+	case 0x34
+	case 0x35
+	case 0x36
+	case 0x37
+	case 0x38
+	case 0x39
+	case 0x3a
+	case 0x3b
+	case 0x3c
+	case 0x3d
+	case 0x3e
+	case 0x3f
+	poke lcdmonopal((argv(0)>>1)&0xF),argv(0)&1,argv(1)
+	return 0
+	swbreak
+
+	case 0x40
+	case 0x41
+	case 0x42
+	poke gdmasrc,argv(0)-0x40,argv(1)
+	return 0
+	swbreak
+	case 0x44
+	case 0x45
+	poke gdmadst,argv(0)-0x44,argv(1)
+	return 0
+	swbreak
+	case 0x46
+	case 0x47
+	poke gdmalength,argv(0)-0x46,argv(1)
+	return 0
+	swbreak
+	case 0x48
+	if argv(1)&128{
+		if argv(1)&64{
+			repeat gdmalength
+			opt4calling=gdmasrc-cnt,0,1
+			poke memory,gdmadst-cnt,callfunc(opt4calling,clbk,3)
+			loop
+			gdmadst-=gdmalength
+			gdmasrc-=gdmalength
+			gdmadst&=0xFFFF
+			gdmasrc&=0xFFFFFF
+			gdmalength=0
+		}else{
+			repeat gdmalength
+			opt4calling=gdmasrc+cnt,0,1
+			poke memory,gdmadst+cnt,callfunc(opt4calling,clbk,3)
+			loop
+			gdmadst+=gdmalength
+			gdmasrc+=gdmalength
+			gdmadst&=0xFFFF
+			gdmasrc&=0xFFFFFF
+			gdmalength=0
+		}
+	}
+	gdmaresult=argv(1)&0x7f
+	return 0
+	swbreak
+
+	case 0x60
+	sysctlreg2=argv(1)
+	return 0
+	swbreak
+
+	case 0x62
+	sysctlreg3=argv(1)
+	return 0
+	swbreak
+
+	case 0xa0
+	sysctlreg1=2|128|argv(1)
+	return 0
+	swbreak
+
+	case 0xa2
+	timerctl=argv(1)
+	if (timerctl&0x1)!0{
+		htimer=hprebase&0xFFFF
+	}else{
+		htimer=0
+	}
+	if (timerctl&0x4)!0{
+		vtimer=vprebase&0xFFFF
+	}else{
+		vtimer=0
+	}
+	return 0
+	swbreak
+
+	case 0xa4
+	case 0xa5
+	poke hprebase,argv(0)&1,argv(1)
+	htimer=hprebase&0xFFFF
+	return 0
+	swbreak
+	case 0xa6
+	case 0xa7
+	poke vprebase,argv(0)&1,argv(1)
+	if (timerctl&0x4)!0{
+		vtimer=vprebase&0xFFFF
+	}
+	return 0
+	swbreak
+	
+	case 0xb0
+	intvecoffset=argv(1)&0xF8
+	return 0
+	swbreak
+	
+	case 0xb2
+	interruptenabled=argv(1)
+	return 0
+	swbreak
+	case 0xb3
+	serialstat=argv(1)
+	if (argv(1)&0x20)!0{
+		serialstat&=0xdf
+	}
+	serialstat|=0x04
+	return 0
+	swbreak
+	
+	case 0xb5
+	rows4input=(argv(1)>>4)&7
+	return 0
+	swbreak
+	case 0xb6
+	interruptstatus^=argv(1)
+	return 0
+	swbreak
+
+	case 0xbe
+	lpoke iomem,0xba,accesseeprom(siepstrcture,lpeek(iomem,0xba))
+	poke iomem,0xbe,(argv(1)>>4)
+	return 0
+	swbreak
+
+	case 0xc0
+	pageladdr=argv(1)
+	return 0
+	swbreak
+	case 0xc1
+	page1addr=argv(1)
+	return 0
+	swbreak
+	case 0xc2
+	page2addr=argv(1)
+	return 0
+	swbreak
+	case 0xc3
+	page3addr=argv(1)
+	return 0
+	swbreak
+
+	case 0xc8
+	lpoke iomem,0xba,accesseeprom(scepstrcture,lpeek(iomem,0xba))
+	poke iomem,0xc8,argv(1)
+	if peek(iomem,0xc8)&0x10{
+		poke iomem,0xc8,(argv(1)>>4)
+	}
+	if peek(iomem,0xc8)&0x20{
+		poke iomem,0xc8,(argv(1)>>4)
+	}
+	if peek(iomem,0xc8)&0x40{
+		poke iomem,0xc8,(argv(1)>>5)
+	}
+	return 0
+	swbreak
+
+	case 0xca
+	rtccmd=argv(1)
+	if argv(1)=0x15{rtccmdcnt=0}
+	return 0
+	swbreak
+	case 0xcb
+	rtcdata=argv(1)
+	return 0
+	swbreak
+	swend
+	if argv(0)<0x100{poke iomem,argv(0),argv(1)}
+	return 0xFF
+swbreak
+case 3
+	switch argv(0)
+	case 0x00
+	return displayctrl
+	swbreak
+	case 0x01
+	return bgcolor
+	swbreak
+	case 0x02
+	return displinercnt+1
+	swbreak
+	case 0x03
+	return interruptinline
+	swbreak
+	case 0x04
+	return spriteaddr
+	swbreak
+	case 0x05
+	return spritetblfst
+	swbreak
+	case 0x06
+	return spritetblcnt
+	swbreak
+	case 0x07
+	return screenaddr
+	swbreak
+	case 0x08
+	case 0x09
+	case 0x0a
+	case 0x0b
+	return peek(scr2winconf,argv(0)&3)
+	swbreak
+	case 0x0c
+	case 0x0d
+	case 0x0e
+	case 0x0f
+	return peek(sprwinconf,argv(0)&3)
+	swbreak
+	case 0x10
+	case 0x11
+	case 0x12
+	case 0x13
+	return peek(scr1scroll,argv(0)&3)
+	swbreak
+	case 0x14
+	return lcdctrl
+	swbreak
+	case 0x15
+	return lcdiconctrl
+	swbreak
+	case 0x16
+	return lcdfinalline
+	swbreak
+	case 0x17
+	return lcdfinalporchline
+	swbreak
+
+	case 0x1a
+	return (lcdstatus&0xFE)|((lcdiconctrl&1) or ((lcdctrl&1)=0))
+	swbreak
+
+	case 0x1c
+	case 0x1d
+	case 0x1e
+	case 0x1f
+	return peek(lcdmonoshade,argv(0)&3)
+	swbreak
+	case 0x20
+	case 0x21
+	case 0x22
+	case 0x23
+	case 0x24
+	case 0x25
+	case 0x26
+	case 0x27
+	case 0x28
+	case 0x29
+	case 0x2a
+	case 0x2b
+	case 0x2c
+	case 0x2d
+	case 0x2e
+	case 0x2f
+	case 0x30
+	case 0x31
+	case 0x32
+	case 0x33
+	case 0x34
+	case 0x35
+	case 0x36
+	case 0x37
+	case 0x38
+	case 0x39
+	case 0x3a
+	case 0x3b
+	case 0x3c
+	case 0x3d
+	case 0x3e
+	case 0x3f
+	return peek(lcdmonopal((argv(0)>>1)&0xF),argv(0)&1)
+	swbreak
+
+	case 0x40
+	case 0x41
+	case 0x42
+	return peek(gdmasrc,argv(0)-0x40)
+	swbreak
+	case 0x44
+	case 0x45
+	return peek(gdmadst,argv(0)-0x44)
+	swbreak
+	case 0x46
+	case 0x47
+	return peek(gdmalength,argv(0)-0x46)
+	swbreak
+	case 0x48
+	return gdmaresult
+	swbreak
+
+	case 0x60
+	return sysctlreg2
+	swbreak
+	
+	case 0x62
+	return sysctlreg3
+	swbreak
+
+	case 0xa0
+	return sysctlreg1
+	swbreak
+
+	case 0xa2
+	return timerctl
+	swbreak
+
+	case 0xa4
+	case 0xa5
+	return peek(hprebase,argv(0)&1)
+	swbreak
+	case 0xa6
+	case 0xa7
+	return peek(vprebase,argv(0)&1)
+	swbreak
+	
+	case 0xb0
+	highestvec=0
+	repeat 8:if (interruptstatus>>cnt)&1{highestvec=cnt}:loop
+	return intvecoffset|highestvec
+	swbreak
+
+	case 0xb3
+	return serialstat
+	swbreak
+	case 0xb4
+	return interruptstatus
+	swbreak
+	case 0xb5
+	keypadstattmp=0
+	if (rows4input&1)!0{keypadstattmp=keypadstat(0)}
+	if (rows4input&2)!0{keypadstattmp=keypadstat(1)}
+	if (rows4input&4)!0{keypadstattmp=keypadstat(2)}
+	return (keypadstattmp&0xF)|(rows4input<<4)
+	swbreak
+
+	case 0xc0
+	return pageladdr
+	swbreak
+	case 0xc1
+	return page1addr
+	swbreak
+	case 0xc2
+	return page2addr
+	swbreak
+	case 0xc3
+	return page3addr
+	swbreak
+
+	case 0xca
+	return rtccmd|0x80
+	swbreak
+	case 0xcb
+	if rtccmd=0x15{
+		switch rtccmdcnt
+		case 0
+		rtccmdcnt++
+		return int("$"+strf("%x",((gettime(0)\100)+0)))
+		swbreak
+		case 1
+		rtccmdcnt++
+		return int("$"+strf("%x",(gettime(1)+0)))
+		swbreak
+		case 2
+		rtccmdcnt++
+		return int("$"+strf("%x",(gettime(3)+0)))
+		swbreak
+		case 3
+		rtccmdcnt++
+		return int("$"+strf("%x",(gettime(2)+0)))
+		swbreak
+		case 4
+		rtccmdcnt++
+		hourtmp4ret=gettime(4)
+		if hourtmp4ret>11{
+			return int("$"+strf("%x",(hourtmp4ret+0)))|0x80
+		}else{
+			return int("$"+strf("%x",(hourtmp4ret+0)))
+		}
+		swbreak
+		case 5
+		rtccmdcnt++
+		return int("$"+strf("%x",(gettime(5)+0)))
+		swbreak
+		case 6
+		rtccmdcnt++
+		return int("$"+strf("%x",(gettime(6)+0)))
+		swbreak
+		swend
+		return 0
+	}else{
+		return rtcdata|0x80
+	}
+	swbreak
+	swend
+	if argv(0)<0x100{return peek(iomem,argv(0))}
+	return 0xFF
+swbreak
+swend
+return 0
